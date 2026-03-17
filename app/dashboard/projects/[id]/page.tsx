@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
-import { getProjectById } from '@/lib/models/geters/projects';
 import { prisma } from '@/lib/prisma';
 import DashboardNavbar from '@/components/DashboardNavbar';
 import ProjectDetailContent from '@/components/ProjectDetailContent';
@@ -17,7 +16,37 @@ export default async function ProjectDetailPage({
   }
 
   const { id } = await params;
-  const project = await getProjectById(id);
+
+  // Fetch project directly from database for reliability
+  const project = await prisma.project.findFirst({
+    where: {
+      id,
+      OR: [
+        { ownerId: user.userId },
+        { members: { some: { userId: user.userId } } },
+      ],
+    },
+    include: {
+      owner: {
+        select: { id: true, email: true, name: true },
+      },
+      tasks: {
+        include: {
+          assignee: {
+            select: { id: true, email: true, name: true },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      },
+      members: {
+        include: {
+          user: {
+            select: { id: true, email: true, name: true },
+          },
+        },
+      },
+    },
+  });
 
   if (!project) {
     redirect('/dashboard');
@@ -26,11 +55,7 @@ export default async function ProjectDetailPage({
   // Get user data for navbar
   const userData = await prisma.user.findUnique({
     where: { id: user.userId },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-    },
+    select: { id: true, email: true, name: true },
   });
 
   const displayName = userData?.name || userData?.email || 'User';

@@ -30,6 +30,10 @@ export interface Task {
     email: string;
     name: string | null;
   } | null;
+  project: {
+    id: string;
+    name: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
