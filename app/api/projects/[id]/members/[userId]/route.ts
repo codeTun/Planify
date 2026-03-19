@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { invalidateProjectCache } from '@/lib/redis';
 
 export async function DELETE(
   request: NextRequest,
@@ -37,6 +38,9 @@ export async function DELETE(
         },
       },
     });
+
+    // Invalidate caches for both the owner and the removed member
+    await invalidateProjectCache(projectId, [user.userId, userId]);
 
     return NextResponse.json({ message: 'Member removed successfully' });
   } catch (error) {

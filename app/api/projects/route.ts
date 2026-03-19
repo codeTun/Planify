@@ -1,12 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import {
+  cacheGet,
+  cacheSet,
+  CACHE_KEYS,
+  CACHE_TTL,
+  invalidateProjectCache,
+  invalidateUserCache,
+} from '@/lib/redis';
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Try Redis cache first
+    const cacheKey = CACHE_KEYS.userProjects(user.userId);
+    const cached = await cacheGet(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
     }
 
     const projects = await prisma.project.findMany({
@@ -50,6 +65,9 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
+    // Store in cache
+    await cacheSet(cacheKey, projects, CACHE_TTL.PROJECT_LIST);
+
     return NextResponse.json(projects);
   } catch (error) {
     console.error('Get projects error:', error);
@@ -90,24 +108,22 @@ export async function POST(request: NextRequest) {
 
       // Add members if provided
       if (memberIds && Array.isArray(memberIds) && memberIds.length > 0) {
-        // Filter out duplicate user IDs and the owner
         const uniqueMemberIds = [...new Set(memberIds)].filter(
           (id) => id !== user.userId
-        );
+        ) as string[];
 
         if (uniqueMemberIds.length > 0) {
           await tx.projectMember.createMany({
             data: uniqueMemberIds.map((userId) => ({
               userId,
               projectId: newProject.id,
-              role: 'MEMBER',
+              role: 'MEMBER' as const,
             })),
             skipDuplicates: true,
           });
         }
       }
 
-      // Return project with relations
       return await tx.project.findUnique({
         where: { id: newProject.id },
         include: {
@@ -133,6 +149,13 @@ export async function POST(request: NextRequest) {
         },
       });
     });
+
+    // Invalidate caches for the owner and all added members
+    const affectedUserIds = [user.userId];
+    if (memberIds && Array.isArray(memberIds)) {
+      affectedUserIds.push(...memberIds);
+    }
+    await invalidateProjectCache(project!.id, affectedUserIds);
 
     return NextResponse.json(project, { status: 201 });
   } catch (error) {

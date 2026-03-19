@@ -1,0 +1,40 @@
+# ─── Dependencies ────────────────────────────────────────────────────
+node_modules
+.pnp
+.pnp.js
+
+# ─── Build output ───────────────────────────────────────────────────
+.next
+out
+dist
+build
+
+# ─── Docker ─────────────────────────────────────────────────────────
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# ─── Version control ────────────────────────────────────────────────
+.git
+.gitignore
+
+# ─── Environment (secrets stay out of the image context) ────────────
+.env
+.env.*
+!.env.example
+
+# ─── IDE / OS ───────────────────────────────────────────────────────
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ─── Misc ───────────────────────────────────────────────────────────
+README.md
+*.md
+LICENSE
+.eslintcache
+coverage
+.turbo

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { invalidateProjectCache } from '@/lib/redis';
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,6 +68,9 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    // Invalidate caches for both the owner and the new member
+    await invalidateProjectCache(projectId, [user.userId, userId]);
 
     return NextResponse.json(member, { status: 201 });
   } catch (error) {

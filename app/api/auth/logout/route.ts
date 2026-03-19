@@ -4,8 +4,8 @@ import { deleteSession } from '@/lib/auth';
 export async function POST(request: NextRequest) {
   try {
     const token = request.cookies.get('auth-token')?.value;
-    
-    // Delete session from database
+
+    // Delete session from database + Redis cache
     if (token) {
       await deleteSession(token);
     }

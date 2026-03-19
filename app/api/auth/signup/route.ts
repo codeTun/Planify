@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/utils';
 import { createSession } from '@/lib/auth';
+import { cacheDel, CACHE_KEYS } from '@/lib/redis';
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,8 +43,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Create session in database and get token
+    // Create session in database and get token (also caches session in Redis)
     const token = await createSession(user.id);
+
+    // Invalidate users list cache (new user was added)
+    await cacheDel(CACHE_KEYS.usersList());
 
     const response = NextResponse.json({
       token,
@@ -51,8 +55,7 @@ export async function POST(request: NextRequest) {
       redirect: '/dashboard',
     });
 
-    // Set the auth cookie with explicit settings
-    // For localhost development, secure must be false
+    // Set the auth cookie
     const isProduction = process.env.NODE_ENV === 'production';
     response.cookies.set('auth-token', token, {
       httpOnly: true,

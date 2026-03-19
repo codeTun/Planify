@@ -8,16 +8,22 @@
     "start": "next start",
     "lint": "eslint .",
     "prisma:generate": "prisma generate",
-    "prisma:push": "prisma db push"
+    "prisma:push": "prisma db push",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f app"
   },
   "dependencies": {
+    "@prisma/client": "^6.0.0",
     "axios": "^1.7.9",
     "bcryptjs": "^2.4.3",
+    "ioredis": "^5.10.0",
     "jsonwebtoken": "^9.0.2",
     "next": "16.1.6",
     "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "@prisma/client": "^6.0.0"
+    "react-dom": "19.2.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import {
+  cacheGet,
+  cacheSet,
+  CACHE_KEYS,
+  CACHE_TTL,
+  invalidateProjectCache,
+} from '@/lib/redis';
 
 export async function GET(
   request: NextRequest,
@@ -13,6 +20,14 @@ export async function GET(
     }
 
     const { id } = await params;
+
+    // Try Redis cache first
+    const cacheKey = CACHE_KEYS.project(id);
+    const cached = await cacheGet(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
+
     const project = await prisma.project.findFirst({
       where: {
         id,
@@ -58,6 +73,9 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
+    // Cache the individual project
+    await cacheSet(cacheKey, project, CACHE_TTL.PROJECT);
+
     return NextResponse.json(project);
   } catch (error) {
     console.error('Get project error:', error);
@@ -87,6 +105,9 @@ export async function PUT(
       where: {
         id,
         ownerId: user.userId,
+      },
+      include: {
+        members: { select: { userId: true } },
       },
     });
 
@@ -136,6 +157,13 @@ export async function PUT(
       },
     });
 
+    // Invalidate caches for owner + all members
+    const affectedUserIds = [
+      user.userId,
+      ...project.members.map((m) => m.userId),
+    ];
+    await invalidateProjectCache(id, affectedUserIds);
+
     return NextResponse.json(updatedProject);
   } catch (error) {
     console.error('Update project error:', error);
@@ -158,11 +186,15 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Check if user is owner
+    // Check if user is owner & get affected members for cache invalidation
     const project = await prisma.project.findFirst({
       where: {
         id,
         ownerId: user.userId,
+      },
+      include: {
+        members: { select: { userId: true } },
+        tasks: { select: { assigneeId: true } },
       },
     });
 
@@ -176,6 +208,14 @@ export async function DELETE(
     await prisma.project.delete({
       where: { id },
     });
+
+    // Invalidate caches for owner, members, and task assignees
+    const affectedUserIds = new Set([
+      user.userId,
+      ...project.members.map((m) => m.userId),
+      ...project.tasks.map((t) => t.assigneeId).filter(Boolean) as string[],
+    ]);
+    await invalidateProjectCache(id, [...affectedUserIds]);
 
     return NextResponse.json({ message: 'Project deleted successfully' });
   } catch (error) {

@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import {
+  cacheGet,
+  cacheSet,
+  CACHE_KEYS,
+  CACHE_TTL,
+  invalidateTaskCache,
+} from '@/lib/redis';
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,6 +18,17 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const projectId = searchParams.get('projectId');
+
+    // Determine cache key based on whether we're filtering by project
+    const cacheKey = projectId
+      ? CACHE_KEYS.projectTasks(projectId)
+      : CACHE_KEYS.userTasks(user.userId);
+
+    // Try Redis cache first
+    const cached = await cacheGet(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
 
     const tasks = await prisma.task.findMany({
       where: {
@@ -40,6 +58,9 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
+    // Cache the result
+    await cacheSet(cacheKey, tasks, CACHE_TTL.TASK_LIST);
+
     return NextResponse.json(tasks);
   } catch (error) {
     console.error('Get tasks error:', error);
@@ -67,7 +88,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user has access to project
+    // Check if user has access to project & get member IDs for invalidation
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
@@ -75,6 +96,9 @@ export async function POST(request: NextRequest) {
           { ownerId: user.userId },
           { members: { some: { userId: user.userId } } },
         ],
+      },
+      include: {
+        members: { select: { userId: true } },
       },
     });
 
@@ -111,6 +135,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Invalidate caches for owner, members, and assignee
+    const affectedUserIds = new Set([
+      user.userId,
+      project.ownerId,
+      ...project.members.map((m) => m.userId),
+    ]);
+    if (assigneeId) affectedUserIds.add(assigneeId);
+    await invalidateTaskCache(task.id, projectId, [...affectedUserIds]);
+
     return NextResponse.json(task, { status: 201 });
   } catch (error: any) {
     console.error('Create task error:', error);
@@ -119,15 +152,14 @@ export async function POST(request: NextRequest) {
       code: error.code,
       meta: error.meta,
     });
-    
-    // Return more specific error messages
+
     if (error.code === 'P2003') {
       return NextResponse.json(
         { error: 'Invalid project or assignee reference' },
         { status: 400 }
       );
     }
-    
+
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }

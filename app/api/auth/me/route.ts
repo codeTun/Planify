@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import {
+  cacheGet,
+  cacheSet,
+  CACHE_KEYS,
+  CACHE_TTL,
+} from '@/lib/redis';
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,6 +17,13 @@ export async function GET(request: NextRequest) {
         { error: 'Unauthorized' },
         { status: 401 }
       );
+    }
+
+    // Try Redis cache first
+    const cacheKey = CACHE_KEYS.user(user.userId);
+    const cached = await cacheGet(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
     }
 
     const userData = await prisma.user.findUnique({
@@ -30,6 +43,9 @@ export async function GET(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    // Cache the user profile data
+    await cacheSet(cacheKey, userData, CACHE_TTL.USER);
 
     return NextResponse.json(userData);
   } catch (error) {

@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import {
+  cacheGet,
+  cacheSet,
+  CACHE_KEYS,
+  CACHE_TTL,
+  invalidateTaskCache,
+} from '@/lib/redis';
 
 export async function GET(
   request: NextRequest,
@@ -13,6 +20,14 @@ export async function GET(
     }
 
     const { id } = await params;
+
+    // Try Redis cache first
+    const cacheKey = CACHE_KEYS.task(id);
+    const cached = await cacheGet(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
+
     const task = await prisma.task.findFirst({
       where: {
         id,
@@ -44,6 +59,9 @@ export async function GET(
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
+    // Cache the individual task
+    await cacheSet(cacheKey, task, CACHE_TTL.TASK);
+
     return NextResponse.json(task);
   } catch (error) {
     console.error('Get task error:', error);
@@ -68,7 +86,7 @@ export async function PUT(
     const body = await request.json();
     const { title, description, status, priority, dueDate, assigneeId } = body;
 
-    // Check if user has access to task's project
+    // Check if user has access and get info for cache invalidation
     const task = await prisma.task.findFirst({
       where: {
         id,
@@ -77,6 +95,13 @@ export async function PUT(
             { ownerId: user.userId },
             { members: { some: { userId: user.userId } } },
           ],
+        },
+      },
+      include: {
+        project: {
+          include: {
+            members: { select: { userId: true } },
+          },
         },
       },
     });
@@ -95,7 +120,9 @@ export async function PUT(
         ...(description !== undefined && { description }),
         ...(status && { status }),
         ...(priority && { priority }),
-        ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
+        ...(dueDate !== undefined && {
+          dueDate: dueDate ? new Date(dueDate) : null,
+        }),
         ...(assigneeId !== undefined && { assigneeId }),
       },
       include: {
@@ -114,6 +141,16 @@ export async function PUT(
         },
       },
     });
+
+    // Invalidate caches for owner, members, old assignee, and new assignee
+    const affectedUserIds = new Set([
+      user.userId,
+      task.project.ownerId,
+      ...task.project.members.map((m) => m.userId),
+    ]);
+    if (task.assigneeId) affectedUserIds.add(task.assigneeId);
+    if (assigneeId) affectedUserIds.add(assigneeId);
+    await invalidateTaskCache(id, task.projectId, [...affectedUserIds]);
 
     return NextResponse.json(updatedTask);
   } catch (error) {
@@ -137,12 +174,19 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Check if user is project owner
+    // Check if user is project owner & get info for invalidation
     const task = await prisma.task.findFirst({
       where: {
         id,
         project: {
           ownerId: user.userId,
+        },
+      },
+      include: {
+        project: {
+          include: {
+            members: { select: { userId: true } },
+          },
         },
       },
     });
@@ -157,6 +201,15 @@ export async function DELETE(
     await prisma.task.delete({
       where: { id },
     });
+
+    // Invalidate caches for owner, members, and assignee
+    const affectedUserIds = new Set([
+      user.userId,
+      task.project.ownerId,
+      ...task.project.members.map((m) => m.userId),
+    ]);
+    if (task.assigneeId) affectedUserIds.add(task.assigneeId);
+    await invalidateTaskCache(id, task.projectId, [...affectedUserIds]);
 
     return NextResponse.json({ message: 'Task deleted successfully' });
   } catch (error) {
