@@ -22,7 +22,8 @@ export default async function DashboardPage() {
   });
 
   // Fetch projects and tasks directly from database
-  let projects, tasks;
+  let projects: any[] = [];
+  let tasks: any[] = [];
   
   try {
     [projects, tasks] = await Promise.all([

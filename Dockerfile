@@ -75,8 +75,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # 4. Prisma schema + migrations (needed for prisma migrate deploy at startup)
 COPY --from=builder /app/prisma ./prisma
 
-# 5. Prisma Client engine (generated for linux-musl)
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+# 5. Prisma Client engine and binaries
+# pnpm stores packages in node_modules/.pnpm, we need to copy the entire tree
+COPY --from=builder /app/node_modules/.pnpm ./node_modules/.pnpm
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma  ./node_modules/prisma
 

@@ -134,7 +134,17 @@ export async function POST(request: NextRequest) {
               name: true,
             },
           },
-          tasks: [],
+          tasks: {
+            include: {
+              assignee: {
+                select: {
+                  id: true,
+                  email: true,
+                  name: true,
+                },
+              },
+            },
+          },
           members: {
             include: {
               user: {

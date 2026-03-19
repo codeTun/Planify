@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import DashboardNavbar from '@/components/DashboardNavbar';
 import ProjectDetailContent from '@/components/ProjectDetailContent';
+import { Project } from '@/lib/models/geters/projects';
 
 export default async function ProjectDetailPage({
   params,
@@ -35,6 +36,9 @@ export default async function ProjectDetailPage({
           assignee: {
             select: { id: true, email: true, name: true },
           },
+          project: {
+            select: { id: true, name: true },
+          },
         },
         orderBy: { createdAt: 'asc' },
       },
@@ -60,10 +64,27 @@ export default async function ProjectDetailPage({
 
   const displayName = userData?.name || userData?.email || 'User';
 
+  // Transform the project data to match the Project type (convert Date to string)
+  const transformedProject: Project = {
+    ...project,
+    createdAt: project.createdAt.toISOString(),
+    updatedAt: project.updatedAt.toISOString(),
+    tasks: project.tasks.map(task => ({
+      ...task,
+      createdAt: task.createdAt.toISOString(),
+      updatedAt: task.updatedAt.toISOString(),
+      dueDate: task.dueDate ? task.dueDate.toISOString() : null,
+    })),
+    members: project.members.map(member => ({
+      ...member,
+      createdAt: member.createdAt.toISOString(),
+    })),
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <DashboardNavbar userName={displayName} />
-      <ProjectDetailContent project={project} userId={user.userId} />
+      <ProjectDetailContent project={transformedProject} userId={user.userId} />
     </div>
   );
 }
