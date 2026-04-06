@@ -1,164 +1,125 @@
 # Planify - Project Management Platform
 
-A modern, full-stack project management application built with Next.js, Prisma, PostgreSQL, and TypeScript. Planify helps teams collaborate, track progress, and deliver projects on time.
+A simple, modern project management app built with Next.js, PostgreSQL, Redis, and Kubernetes.
 
-## Features
+## ✨ Features
 
-- 🔐 **Secure Authentication** - JWT-based authentication with password hashing
-- 📊 **Project Management** - Create, manage, and organize projects
-- ✅ **Task Tracking** - Assign tasks, set priorities, track status, and manage deadlines
-- 👥 **Team Collaboration** - Add team members and collaborate on projects
-- 🎨 **Modern UI/UX** - Beautiful, responsive design with Tailwind CSS
-- ⚡ **Performance Optimized** - Uses useCallback, useMemo, and SSR for optimal performance
-- 🏗️ **Clean Architecture** - Organized API consumption layer with `/lib/models` structure
+- 🎯 Project & task management with Kanban boards
+- 👥 Team collaboration
+- 🎨 Modern UI with animations
+- ⚡ Redis caching for performance
+- 🚀 Auto-scaling Kubernetes deployment
+- 🔄 Automatic CI/CD with GitHub Actions
 
-## Tech Stack
+## 🚀 Quick Start
 
-- **Frontend**: Next.js 16, React 19, TypeScript, Tailwind CSS
+### Local Development
+```bash
+pnpm install
+pnpm dev
+```
+Visit: http://localhost:3000
+
+### Docker (Testing)
+```bash
+pnpm docker:up      # Start all services
+pnpm docker:logs    # View logs
+pnpm docker:down    # Stop
+```
+
+### Kubernetes (Production)
+```bash
+./kubernetes/deploy.sh    # Deploy to AKS
+pnpm k8s:status          # Check status
+pnpm k8s:logs            # View logs
+```
+
+## 🔄 CI/CD (Automatic Deployment)
+
+Push code → Auto-deploy to Kubernetes in 3-5 minutes!
+
+```bash
+git push origin main
+# ✨ Automatic: Build → Push to Docker Hub → Deploy to K8s
+```
+
+**Setup**: See [.github/workflows/SETUP.md](.github/workflows/SETUP.md) (5 minutes)
+
+## 📦 Tech Stack
+
+- **Frontend**: Next.js 16, React 19, Tailwind CSS
 - **Backend**: Next.js API Routes
-- **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: JWT tokens with bcrypt password hashing
-- **Package Manager**: pnpm
+- **Database**: PostgreSQL (Prisma ORM)
+- **Cache**: Redis
+- **Auth**: JWT
+- **Deploy**: Docker + Kubernetes (Azure AKS)
+- **CI/CD**: GitHub Actions + Docker Hub
 
-## Prerequisites
-
-- Node.js 18+ installed
-- PostgreSQL database running
-- pnpm installed (`npm install -g pnpm`)
-
-## Setup Instructions
-
-1. **Clone the repository** (if applicable) or navigate to the project directory
-
-2. **Install dependencies**
-   ```bash
-   pnpm install
-   ```
-
-3. **Set up environment variables**
-   
-   Create a `.env` file in the root directory:
-   ```env
-   DATABASE_URL="postgresql://user:password@localhost:5432/planify?schema=public"
-   JWT_SECRET="your-super-secret-jwt-key-change-in-production"
-   NEXT_PUBLIC_API_URL="/api"
-   ```
-
-4. **Set up the database**
-   
-   Generate Prisma Client:
-   ```bash
-   pnpm prisma:generate
-   ```
-   
-   Push the schema to your database:
-   ```bash
-   pnpm prisma:push
-   ```
-
-5. **Run the development server**
-   ```bash
-   pnpm dev
-   ```
-
-6. **Open your browser**
-   
-   Navigate to [http://localhost:3000](http://localhost:3000)
-
-## Project Structure
+## 📁 Project Structure
 
 ```
 planify/
-├── app/                    # Next.js app directory
-│   ├── api/               # API routes
-│   │   ├── auth/          # Authentication endpoints
-│   │   ├── projects/      # Project endpoints
-│   │   └── tasks/         # Task endpoints
-│   ├── dashboard/         # Dashboard pages
-│   ├── login/             # Login page
-│   └── signup/            # Signup page
-├── components/            # React components
-│   ├── DashboardContent.tsx
-│   ├── ProjectCard.tsx
-│   ├── TaskCard.tsx
-│   └── ...
-├── lib/
-│   ├── models/            # API consumption layer
-│   │   ├── geters/        # GET operations
-│   │   ├── posters/       # POST operations
-│   │   ├── puters/        # PUT operations
-│   │   └── deleters/      # DELETE operations
-│   ├── auth.ts            # Authentication utilities
-│   ├── prisma.ts          # Prisma client
-│   └── utils.ts           # Utility functions
-├── prisma/
-│   └── schema.prisma      # Database schema
-└── middleware.ts          # Next.js middleware for route protection
+├── app/                    # Next.js pages & API routes
+├── components/             # React components
+├── lib/                    # Utilities (auth, redis, prisma)
+├── kubernetes/             # K8s manifests (8 files)
+├── .github/workflows/      # CI/CD pipeline
+├── prisma/                 # Database schema
+└── docker-compose.yml      # Local Docker setup
 ```
 
-## Database Schema
+## 🔧 Available Commands
 
-The application uses the following main models:
+```bash
+# Development
+pnpm dev                   # Start dev server
+pnpm build                 # Production build
 
-- **User** - User accounts with email and password
-- **Project** - Projects owned by users
-- **Task** - Tasks belonging to projects
-- **ProjectMember** - Many-to-many relationship between users and projects
+# Database
+pnpm prisma:generate       # Generate client
+pnpm prisma:push          # Push schema
 
-## API Endpoints
+# Docker
+pnpm docker:up            # Start containers
+pnpm docker:down          # Stop containers
 
-### Authentication
-- `POST /api/auth/signup` - Create a new account
-- `POST /api/auth/login` - Login to account
-- `GET /api/auth/me` - Get current user
-- `POST /api/auth/logout` - Logout
+# Kubernetes
+pnpm k8s:deploy           # Deploy to K8s
+pnpm k8s:status           # View status
+pnpm k8s:logs             # View logs
+```
 
-### Projects
-- `GET /api/projects` - Get all projects (user has access to)
-- `GET /api/projects/my-projects` - Get user's owned projects
-- `GET /api/projects/:id` - Get project by ID
-- `POST /api/projects` - Create a new project
-- `PUT /api/projects/:id` - Update project
-- `DELETE /api/projects/:id` - Delete project
-- `POST /api/projects/members` - Add member to project
-- `DELETE /api/projects/:id/members/:userId` - Remove member from project
+## 📚 Documentation
 
-### Tasks
-- `GET /api/tasks` - Get all tasks (optionally filtered by projectId)
-- `GET /api/tasks/my-tasks` - Get user's assigned tasks
-- `GET /api/tasks/:id` - Get task by ID
-- `POST /api/tasks` - Create a new task
-- `PUT /api/tasks/:id` - Update task
-- `DELETE /api/tasks/:id` - Delete task
+- **[.github/workflows/SETUP.md](.github/workflows/SETUP.md)** - CI/CD setup (5 min)
+- **[kubernetes/README.md](kubernetes/README.md)** - Kubernetes deployment guide
+- **[kubernetes/CHEAT-SHEET.md](kubernetes/CHEAT-SHEET.md)** - Quick command reference
 
-## Usage
+## 🎯 Deployment Options
 
-1. **Sign Up**: Create a new account on the signup page
-2. **Login**: Sign in with your credentials
-3. **Create Projects**: Click "New Project" to create your first project
-4. **Add Tasks**: Create tasks within your projects
-5. **Manage Team**: Add team members to collaborate on projects
-6. **Track Progress**: Update task statuses and monitor progress
+| Option | Use Case | Time | Cost |
+|--------|----------|------|------|
+| Local | Development | 2 min | Free |
+| Docker | Testing | 5 min | Free |
+| Kubernetes | Production | 15 min | ~$40/mo |
 
-## Performance Optimizations
+## 🔐 Environment Variables
 
-- Server-side rendering (SSR) for initial page loads
-- `useCallback` hooks for memoized event handlers
-- `useMemo` hooks for computed values
-- Data fetching at the page level and passing via props
-- Optimized API consumption layer
+```bash
+DATABASE_URL=postgresql://user:password@localhost:5432/planify
+REDIS_URL=redis://localhost:6379
+JWT_SECRET=your-secret-key
+NODE_ENV=production
+```
 
-## Development
+## ⚙️ Kubernetes Features
 
-- Run linting: `pnpm lint`
-- Generate Prisma Client: `pnpm prisma:generate`
-- Push schema changes: `pnpm prisma:push`
-- View Prisma Studio: `pnpm prisma studio`
+- ✅ Auto-scaling (3-10 pods)
+- ✅ Zero-downtime deployments
+- ✅ Health monitoring
+- ✅ Load balancing
+- ✅ Persistent storage
 
-## License
+---
 
-This project is created for academic purposes (PFA - Projet de Fin d'Année).
-
-## Author
-
-Iheb Elazheri - 2ème CCV
+**Made with ❤️ for productive teams**

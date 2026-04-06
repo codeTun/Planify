@@ -1,0 +1,99 @@
+# ════════════════════════════════════════════════════════════════════════
+#  Redis Cache - High-performance in-memory caching
+# ════════════════════════════════════════════════════════════════════════
+
+# PersistentVolumeClaim - Storage for Redis persistence (optional but recommended)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: planify
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi  # 1GB for Redis snapshots
+  # storageClassName: default  # Uncomment for Azure
+
+---
+# Deployment - Redis server
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: planify
+  labels:
+    app: redis
+    tier: cache
+spec:
+  replicas: 1  # Single instance (simple setup)
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+        tier: cache
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+          name: redis
+        command:
+        - redis-server
+        - --appendonly
+        - "yes"
+        - --save
+        - "60 1"  # Save snapshot every 60s if at least 1 key changed
+        volumeMounts:
+        - name: redis-storage
+          mountPath: /data
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: redis-storage
+        persistentVolumeClaim:
+          claimName: redis-pvc
+
+---
+# Service - Internal access to Redis
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: planify
+  labels:
+    app: redis
+    tier: cache
+spec:
+  type: ClusterIP  # Internal only
+  ports:
+  - port: 6379
+    targetPort: 6379
+    protocol: TCP
+    name: redis
+  selector:
+    app: redis

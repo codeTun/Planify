@@ -1,0 +1,42 @@
+# ════════════════════════════════════════════════════════════════════════
+#  Horizontal Pod Autoscaler - Auto-scales app based on CPU/memory usage
+#  Automatically increases replicas from 3 to 10 when under heavy load
+# ════════════════════════════════════════════════════════════════════════
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: planify-app-hpa
+  namespace: planify
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: planify-app
+  minReplicas: 3   # Minimum 3 pods (redundancy)
+  maxReplicas: 5  # Maximum 5 pods (cost control)
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70  # Scale up when CPU > 70%
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80  # Scale up when memory > 80%
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60  # Wait 60s before scaling up
+      policies:
+      - type: Percent
+        value: 50  # Add 50% more pods at a time
+        periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300  # Wait 5 min before scaling down
+      policies:
+      - type: Pods
+        value: 1  # Remove 1 pod at a time
+        periodSeconds: 60

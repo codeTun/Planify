@@ -1,0 +1,70 @@
+# ════════════════════════════════════════════════════════════════════════
+#  Migration Job - Runs Prisma migrations once before app deployment
+#  Run this manually: kubectl apply -f migration-job.yaml
+# ════════════════════════════════════════════════════════════════════════
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: planify-migrations
+  namespace: planify
+  labels:
+    app: planify-migrations
+spec:
+  ttlSecondsAfterFinished: 100  # Auto-cleanup after 100 seconds
+  template:
+    metadata:
+      labels:
+        app: planify-migrations
+    spec:
+      restartPolicy: OnFailure
+      
+      # Wait for PostgreSQL to be ready
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - |
+          echo "Waiting for PostgreSQL..."
+          until nc -z postgres 5432; do
+            echo "PostgreSQL is unavailable - sleeping"
+            sleep 2
+          done
+          echo "PostgreSQL is up - ready for migrations!"
+      
+      containers:
+      - name: migrations
+        image: planify-app:latest  # Same image as the app
+        command:
+        - sh
+        - -c
+        - |
+          echo "🔄 Running Prisma migrations..."
+          node node_modules/.pnpm/prisma@*/node_modules/prisma/build/index.js migrate deploy
+          echo "✅ Migrations completed successfully!"
+        env:
+        - name: DATABASE_URL
+          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)?schema=public"
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: planify-config
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: planify-secrets
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: planify-config
+              key: POSTGRES_DB
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"

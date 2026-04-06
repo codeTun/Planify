@@ -1,0 +1,10 @@
+# ════════════════════════════════════════════════════════════════════════
+#  Namespace - Isolates Planify resources
+# ════════════════════════════════════════════════════════════════════════
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: planify
+  labels:
+    app: planify
+    environment: production

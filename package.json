@@ -13,7 +13,12 @@
     "docker:build": "docker compose build",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f app"
+    "docker:logs": "docker compose logs -f app",
+    "k8s:deploy": "kubectl apply -f kubernetes/",
+    "k8s:delete": "kubectl delete namespace planify",
+    "k8s:status": "kubectl get all -n planify",
+    "k8s:logs": "kubectl logs -f deployment/planify-app -n planify",
+    "k8s:pods": "kubectl get pods -n planify"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
