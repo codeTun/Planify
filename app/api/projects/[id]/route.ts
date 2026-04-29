@@ -160,7 +160,7 @@ export async function PUT(
     // Invalidate caches for owner + all members
     const affectedUserIds = [
       user.userId,
-      ...project.members.map((m) => m.userId),
+      ...project.members.map((m: any) => m.userId),
     ];
     await invalidateProjectCache(id, affectedUserIds);
 
@@ -212,8 +212,8 @@ export async function DELETE(
     // Invalidate caches for owner, members, and task assignees
     const affectedUserIds = new Set([
       user.userId,
-      ...project.members.map((m) => m.userId),
-      ...project.tasks.map((t) => t.assigneeId).filter(Boolean) as string[],
+      ...project.members.map((m: any) => m.userId),
+      ...project.tasks.map((t: any) => t.assigneeId).filter(Boolean) as string[],
     ]);
     await invalidateProjectCache(id, [...affectedUserIds]);
 

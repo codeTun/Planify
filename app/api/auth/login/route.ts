@@ -52,9 +52,13 @@ export async function POST(request: NextRequest) {
     // Set the auth cookie with explicit settings
     // For localhost development, secure must be false
     const isProduction = process.env.NODE_ENV === 'production';
+    const forwardedProto = request.headers.get('x-forwarded-proto');
+    const isHttps = forwardedProto
+      ? forwardedProto.split(',')[0].trim() === 'https'
+      : request.nextUrl.protocol === 'https:';
     response.cookies.set('auth-token', token, {
       httpOnly: true,
-      secure: isProduction,
+      secure: isProduction && isHttps,
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',

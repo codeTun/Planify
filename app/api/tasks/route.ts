@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
     const affectedUserIds = new Set([
       user.userId,
       project.ownerId,
-      ...project.members.map((m) => m.userId),
+      ...project.members.map((m : any) => m.userId),
     ]);
     if (assigneeId) affectedUserIds.add(assigneeId);
     await invalidateTaskCache(task.id, projectId, [...affectedUserIds]);

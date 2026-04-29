@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create project with members in a transaction
-    const project = await prisma.$transaction(async (tx) => {
+    const project = await prisma.$transaction(async (tx : any) => {
       // Create the project
       const newProject = await tx.project.create({
         data: {
