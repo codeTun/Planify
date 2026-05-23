@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import DashboardNavbar from '@/components/DashboardNavbar';
 import ProjectDetailContent from '@/components/ProjectDetailContent';
-import { Project } from '@/lib/models/geters/projects';
+import { Project, Task, ProjectMember } from '@/lib/models/geters/projects';
 
 export default async function ProjectDetailPage({
   params,
@@ -69,13 +69,19 @@ export default async function ProjectDetailPage({
     ...project,
     createdAt: project.createdAt.toISOString(),
     updatedAt: project.updatedAt.toISOString(),
-    tasks: project.tasks.map(task => ({
+    tasks: project.tasks.map((task: Omit<Task, 'createdAt' | 'updatedAt' | 'dueDate'> & {
+      createdAt: Date;
+      updatedAt: Date;
+      dueDate: Date | null;
+    }) => ({
       ...task,
       createdAt: task.createdAt.toISOString(),
       updatedAt: task.updatedAt.toISOString(),
       dueDate: task.dueDate ? task.dueDate.toISOString() : null,
     })),
-    members: project.members.map(member => ({
+    members: project.members.map((member: Omit<ProjectMember, 'createdAt'> & {
+      createdAt: Date;
+    }) => ({
       ...member,
       createdAt: member.createdAt.toISOString(),
     })),

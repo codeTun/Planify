@@ -1,0 +1,99 @@
+# ════════════════════════════════════════════════════════════════════════
+#  CI/CD Pipeline - Automatic Build & Deploy to Kubernetes
+#  Triggers on push to main branch
+# ════════════════════════════════════════════════════════════════════════
+
+name: Deploy to Kubernetes
+
+on:
+  push:
+    branches: [ main ]  # Change to your main branch name (main/master)
+  workflow_dispatch:    # Allows manual trigger from GitHub UI
+
+env:
+  DOCKER_IMAGE: planify-app
+  K8S_NAMESPACE: planify
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    
+    steps:
+    # ─── Step 1: Checkout code ───────────────────────────────────────
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    # ─── Step 2: Set up Docker Buildx ────────────────────────────────
+    - name: 🐳 Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    # ─── Step 3: Login to Docker Hub ─────────────────────────────────
+    - name: 🔐 Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    # ─── Step 4: Build and Push Docker image ─────────────────────────
+    - name: 🏗️ Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        push: true
+        platforms: linux/amd64
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE }}:latest
+          ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    # ─── Step 5: Install kubectl ─────────────────────────────────────
+    - name: ⚙️ Install kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+
+    # ─── Step 6: Configure Azure credentials ─────────────────────────
+    - name: 🔑 Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    # ─── Step 7: Get AKS credentials ──────────────────────────────────
+    - name: 📦 Get AKS credentials
+      run: |
+        az aks get-credentials \
+          --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+          --name ${{ secrets.AZURE_AKS_CLUSTER }} \
+          --overwrite-existing
+
+    # ─── Step 8: Update Kubernetes deployment ────────────────────────
+    - name: 🚀 Deploy to Kubernetes
+      run: |
+        # Update the image in the deployment
+        kubectl set image deployment/planify-app \
+          planify-app=${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE }}:${{ github.sha }} \
+          -n ${{ env.K8S_NAMESPACE }}
+        
+        # Wait for rollout to complete
+        kubectl rollout status deployment/planify-app -n ${{ env.K8S_NAMESPACE }} --timeout=5m
+
+    # ─── Step 9: Verify deployment ────────────────────────────────────
+    - name: ✅ Verify deployment
+      run: |
+        echo "Checking deployment status..."
+        kubectl get pods -n ${{ env.K8S_NAMESPACE }}
+        kubectl get svc planify-loadbalancer -n ${{ env.K8S_NAMESPACE }}
+        
+        # Test health endpoint
+        EXTERNAL_IP=$(kubectl get svc planify-loadbalancer -n ${{ env.K8S_NAMESPACE }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        echo "App is accessible at: http://$EXTERNAL_IP"
+
+    # ─── Step 10: Notify on success ───────────────────────────────────
+    - name: 🎉 Deployment successful
+      if: success()
+      run: |
+        echo "✅ Deployment completed successfully!"
+        echo "🚀 New version deployed: ${{ github.sha }}"

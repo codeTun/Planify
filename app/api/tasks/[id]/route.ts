@@ -146,7 +146,7 @@ export async function PUT(
     const affectedUserIds = new Set([
       user.userId,
       task.project.ownerId,
-      ...task.project.members.map((m) => m.userId),
+      ...task.project.members.map((m : any) => m.userId),
     ]);
     if (task.assigneeId) affectedUserIds.add(task.assigneeId);
     if (assigneeId) affectedUserIds.add(assigneeId);
@@ -206,7 +206,7 @@ export async function DELETE(
     const affectedUserIds = new Set([
       user.userId,
       task.project.ownerId,
-      ...task.project.members.map((m) => m.userId),
+      ...task.project.members.map((m : any) => m.userId),
     ]);
     if (task.assigneeId) affectedUserIds.add(task.assigneeId);
     await invalidateTaskCache(id, task.projectId, [...affectedUserIds]);
