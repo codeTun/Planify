@@ -14,7 +14,7 @@ spec:
   resources:
     requests:
       storage: 5Gi  # 5GB storage for database
-  # storageClassName: default  # Uncomment and set for Azure (e.g., managed-premium)
+  storageClassName: managed-csi
 
 ---
 # Deployment - PostgreSQL StatefulSet-like deployment

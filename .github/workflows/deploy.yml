@@ -11,7 +11,7 @@ on:
   workflow_dispatch:    # Allows manual trigger from GitHub UI
 
 env:
-  DOCKER_IMAGE: planify  # Your Docker image name
+  DOCKER_IMAGE: planify-app
   K8S_NAMESPACE: planify
 
 jobs:
@@ -42,6 +42,7 @@ jobs:
         context: .
         file: ./Dockerfile
         push: true
+        platforms: linux/amd64
         tags: |
           ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE }}:latest
           ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE }}:${{ github.sha }}

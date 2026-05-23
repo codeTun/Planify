@@ -14,7 +14,7 @@ spec:
   resources:
     requests:
       storage: 1Gi  # 1GB for Redis snapshots
-  # storageClassName: default  # Uncomment for Azure
+  storageClassName: managed-csi
 
 ---
 # Deployment - Redis server

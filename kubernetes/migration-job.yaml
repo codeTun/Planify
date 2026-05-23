@@ -35,7 +35,7 @@ spec:
       
       containers:
       - name: migrations
-        image: planify-app:latest  # Same image as the app
+        image: iheb770/planify-app:latest
         command:
         - sh
         - -c
@@ -44,8 +44,6 @@ spec:
           node node_modules/.pnpm/prisma@*/node_modules/prisma/build/index.js migrate deploy
           echo "✅ Migrations completed successfully!"
         env:
-        - name: DATABASE_URL
-          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)?schema=public"
         - name: POSTGRES_USER
           valueFrom:
             configMapKeyRef:
@@ -61,6 +59,8 @@ spec:
             configMapKeyRef:
               name: planify-config
               key: POSTGRES_DB
+        - name: DATABASE_URL
+          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)?schema=public"
         resources:
           requests:
             memory: "128Mi"
